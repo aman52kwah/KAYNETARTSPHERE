@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom';
-import useAuth from '../hooks/useAuth'; // Custom hook
+import useAuth from '../utils/hooks/useAuth'; // Custom hook
 
 const ProtectedRoute = ({ children, isAdmin = false }) => {
   const { isAuthenticated, userRole } = useAuth();

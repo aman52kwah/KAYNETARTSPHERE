@@ -3,12 +3,12 @@ import axios from 'axios';
 
 const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/auth/user`, { withCredentials: true });
+        const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/auth/user`, { withCredentials: true });
         setIsAuthenticated(true);
         setUserRole(res.data.role);
       } catch {
