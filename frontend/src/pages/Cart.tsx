@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CartContext, AuthContext } from '../App';
+import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 
 interface CartItem {
   id: string | number;
@@ -27,25 +28,18 @@ interface CartContextType {
   // Add other fields if needed
 }
 
-interface AuthContextType {
-  user: User | null;
-  // Add other fields if needed
-}
+// interface AuthContextType {
+//   user: User | null;
+//   // Add other fields if needed
+// }
 
 const Cart: React.FC = () => {
-  const cartContext = useContext(CartContext);
-  const authContext = useContext(AuthContext);
 
-  if (!cartContext) {
-    throw new Error('Cart must be used within a CartContext provider');
-  }
-  if (!authContext) {
-    throw new Error('Cart must be used within an AuthContext provider');
-  }
-
-  const { cart, removeFromCart, updateCartQuantity } = cartContext;
-  const { user } = authContext;
   const navigate = useNavigate();
+
+   const { cart, removeFromCart, updateCartQuantity, cartTotal } = useCart();
+  const { user } = useAuth();
+
 
   const total = cart.reduce((sum, item) => sum + parseFloat(item.price.toString()) * item.quantity, 0);
 
@@ -63,7 +57,7 @@ const Cart: React.FC = () => {
         <h2 className="text-2xl font-bold mb-4">Your cart is empty</h2>
         <button
           onClick={() => navigate('/shop')}
-          className="bg-purple-600 text-white px-6 py-3 rounded hover:bg-purple-700"
+          className="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700"
         >
           Continue Shopping
         </button>
@@ -73,7 +67,7 @@ const Cart: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
+      <h1 className="text-3xl font-bold mb-8 text-blue-600">Shopping Cart</h1>
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           {cart.map((item) => (
@@ -88,8 +82,8 @@ const Cart: React.FC = () => {
                 <p className="text-gray-600">
                   {item.size} • {item.color}
                 </p>
-                <p className="text-purple-600 font-bold mt-2">
-                  ₦{parseFloat(item.price.toString()).toLocaleString()}
+                <p className="text-green-600 font-bold mt-2">
+                  GHC{parseFloat(item.price.toString()).toLocaleString()}
                 </p>
                 <div className="flex items-center mt-4 space-x-4">
                   <div className="flex items-center border rounded">
@@ -117,7 +111,7 @@ const Cart: React.FC = () => {
               </div>
               <div className="text-right">
                 <p className="font-bold text-lg">
-                  ₦{(parseFloat(item.price.toString()) * item.quantity).toLocaleString()}
+                  GHC{(parseFloat(item.price.toString()) * item.quantity).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -129,7 +123,7 @@ const Cart: React.FC = () => {
             <div className="space-y-2 mb-4">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>₦{total.toLocaleString()}</span>
+                <span>GHC{total.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Shipping:</span>
@@ -138,7 +132,7 @@ const Cart: React.FC = () => {
               <hr className="my-2" />
               <div className="flex justify-between font-bold text-lg">
                 <span>Total:</span>
-                <span className="text-purple-600">₦{total.toLocaleString()}</span>
+                <span className="text-purple-600">GHC{total.toLocaleString()}</span>
               </div>
             </div>
             <button

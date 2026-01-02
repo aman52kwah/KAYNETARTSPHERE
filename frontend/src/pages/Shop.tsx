@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { CartContext } from '../App';
+import { useCart } from "../context/CartContext";
+//import { useAuth } from "../context/AuthContext";
 
 interface Product {
   id: string | number;
@@ -20,10 +21,10 @@ interface Category {
   // Add other category fields as needed
 }
 
-interface CartContextType {
-  addToCart: (product: Product, quantity?: number) => void;
-  // Add other fields if needed
-}
+// interface CartContextType {
+//   addToCart: (product: Product, quantity?: number) => void;
+//   // Add other fields if needed
+// }
 
 const Shop: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -31,13 +32,9 @@ const Shop: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
 
-  const cartContext = useContext(CartContext);
+  //const cartContext = useContext(CartContext);
+  const { addToCart } = useCart();
 
-  if (!cartContext) {
-    throw new Error('Shop must be used within a CartContext provider');
-  }
-
-  const { addToCart } = cartContext;
 
   useEffect(() => {
     fetchProducts();
@@ -65,11 +62,11 @@ const Shop: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="max-w-7xl mx-auto px-4 py-8">Loading...</div>;
+  if (loading) return <div className="max-w-7xl mx-auto px-4 py-8"></div>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Shop Ready-Made Collections</h1>
+      <h1 className="text-3xl font-bold mb-8 text-gray-800">Shop Ready-Made Collections</h1>
       <div className="mb-6">
         <label className="mr-4 font-semibold">Filter by Category:</label>
         <select
@@ -107,7 +104,7 @@ const Shop: React.FC = () => {
               </p>
               <div className="flex justify-between items-center">
                 <span className="text-xl font-bold text-purple-600">
-                  ₦{parseFloat(product.price.toString()).toLocaleString()}
+                  GH₵ {parseFloat(product.price.toString()).toLocaleString()}
                 </span>
                 <button
                   onClick={() => addToCart(product)}
