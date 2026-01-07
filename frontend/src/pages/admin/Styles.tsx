@@ -1,6 +1,7 @@
 // src/pages/admin/Styles.tsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
 
 interface Category {
   id: string;
@@ -30,6 +31,7 @@ const AdminStyles: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingStyle, setEditingStyle] = useState<Style | null>(null);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
@@ -45,17 +47,33 @@ const AdminStyles: React.FC = () => {
 
   const fetchStyles = async () => {
     try {
-      const response = await axios.get('/admin/styles');
-      setStyles(response.data);
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/styles`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch styles');
+      
+      const data = await response.json();
+      setStyles(data);
     } catch (error) {
       console.error('Error fetching styles:', error);
+      alert('Failed to load styles');
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('/admin/categories');
-      setCategories(response.data);
+      const response = await fetch(`${API_BASE_URL}/api/categories`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      
+      const data = await response.json();
+      setCategories(data);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -69,11 +87,21 @@ const AdminStyles: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingStyle) {
-        await axios.put(`/admin/styles/${editingStyle.id}`, formData);
-      } else {
-        await axios.post('/admin/styles', formData);
-      }
+      const url = editingStyle
+        ? `${API_BASE_URL}/api/styles/${editingStyle.id}`
+        : `${API_BASE_URL}/api/styles`;
+      
+      const response = await fetch(url, {
+        method: editingStyle ? 'PUT' : 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) throw new Error('Failed to save style');
+
       fetchStyles();
       resetForm();
       alert('Style saved successfully!');
@@ -98,7 +126,13 @@ const AdminStyles: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this style?')) {
       try {
-        await axios.delete(`/admin/styles/${id}`);
+        const response = await fetch(`${API_BASE_URL}/api/styles/${id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+
+        if (!response.ok) throw new Error('Failed to delete style');
+
         fetchStyles();
         alert('Style deleted successfully!');
       } catch (error) {
@@ -132,57 +166,63 @@ const AdminStyles: React.FC = () => {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Image</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Base Price</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {styles.map((style) => (
-              <tr key={style.id} className="border-t hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <img
-                    src={style.imageUrl || 'https://via.placeholder.com/60'}
-                    alt={style.name}
-                    className="w-16 h-16 object-cover rounded"
-                  />
-                </td>
-                <td className="px-6 py-4 font-medium">{style.name}</td>
-                <td className="px-6 py-4 text-gray-600">{style.Category?.name || '-'}</td>
-                <td className="px-6 py-4 font-semibold text-purple-600">
-                  ₦{parseFloat(String(style.basePrice)).toLocaleString()}
-                </td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => handleEdit(style)}
-                    className="text-blue-600 hover:text-blue-800 mr-4 font-medium"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(style.id)}
-                    className="text-red-600 hover:text-red-800 font-medium"
-                  >
-                    Delete
-                  </button>
-                </td>
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Image</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Base Price</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {styles.map((style) => (
+                <tr key={style.id} className="border-t hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <img
+                      src={style.imageUrl || 'https://via.placeholder.com/60'}
+                      alt={style.name}
+                      className="w-16 h-16 object-cover rounded"
+                    />
+                  </td>
+                  <td className="px-6 py-4 font-medium">{style.name}</td>
+                  <td className="px-6 py-4 text-gray-600">{style.Category?.name || '-'}</td>
+                  <td className="px-6 py-4 font-semibold text-purple-600">
+                    GH₵{parseFloat(String(style.basePrice)).toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => handleEdit(style)}
+                      className="text-blue-600 hover:text-blue-800 mr-4 font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(style.id)}
+                      className="text-red-600 hover:text-red-800 font-medium"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-        {styles.length === 0 && (
-          <div className="text-center py-16 text-gray-500">
-            <p className="text-lg">No styles yet. Add your first style!</p>
-          </div>
-        )}
-      </div>
+          {styles.length === 0 && (
+            <div className="text-center py-16 text-gray-500">
+              <p className="text-lg">No styles yet. Add your first style!</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -224,7 +264,7 @@ const AdminStyles: React.FC = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block font-semibold mb-2 text-gray-700">Base Price (₦) *</label>
+                <label className="block font-semibold mb-2 text-gray-700">Base Price (GH₵) *</label>
                 <input
                   type="number"
                   step="0.01"

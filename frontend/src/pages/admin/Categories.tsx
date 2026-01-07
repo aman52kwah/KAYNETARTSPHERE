@@ -1,6 +1,7 @@
 // src/pages/admin/Categories.tsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
 
 interface Category {
   id: string;
@@ -21,6 +22,7 @@ const AdminCategories: React.FC = () => {
     name: '',
     description: '',
   });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -28,10 +30,20 @@ const AdminCategories: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('/admin/categories');
-      setCategories(response.data);
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/categories`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      
+      const data = await response.json();
+      setCategories(data);
     } catch (error) {
       console.error('Error fetching categories:', error);
+      alert('Failed to load categories');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,11 +55,21 @@ const AdminCategories: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingCategory) {
-        await axios.put(`/admin/categories/${editingCategory.id}`, formData);
-      } else {
-        await axios.post('/admin/categories', formData);
-      }
+      const url = editingCategory
+        ? `${API_BASE_URL}/api/categories/${editingCategory.id}`
+        : `${API_BASE_URL}/api/categories`;
+      
+      const response = await fetch(url, {
+        method: editingCategory ? 'PUT' : 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) throw new Error('Failed to save category');
+
       fetchCategories();
       resetForm();
       alert('Category saved successfully!');
@@ -69,7 +91,13 @@ const AdminCategories: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this category? This may affect related products and styles.')) {
       try {
-        await axios.delete(`/admin/categories/${id}`);
+        const response = await fetch(`${API_BASE_URL}/api/categories/${id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+
+        if (!response.ok) throw new Error('Failed to delete category');
+
         fetchCategories();
         alert('Category deleted successfully!');
       } catch (error) {
@@ -100,48 +128,54 @@ const AdminCategories: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {categories.map((category) => (
-          <div key={category.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-start justify-between mb-3">
-              <h3 className="text-xl font-bold text-gray-800">{category.name}</h3>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleEdit(category)}
-                  className="text-blue-600 hover:text-blue-800"
-                  title="Edit"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => handleDelete(category.id)}
-                  className="text-red-600 hover:text-red-800"
-                  title="Delete"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {categories.map((category) => (
+            <div key={category.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between mb-3">
+                <h3 className="text-xl font-bold text-gray-800">{category.name}</h3>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleEdit(category)}
+                    className="text-blue-600 hover:text-blue-800"
+                    title="Edit"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(category.id)}
+                    className="text-red-600 hover:text-red-800"
+                    title="Delete"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
               </div>
+              <p className="text-gray-600 text-sm">
+                {category.description || 'No description provided'}
+              </p>
             </div>
-            <p className="text-gray-600 text-sm">
-              {category.description || 'No description provided'}
-            </p>
-          </div>
-        ))}
+          ))}
 
-        {categories.length === 0 && (
-          <div className="col-span-full text-center py-16 text-gray-500">
-            <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-            <p className="text-lg font-medium">No categories yet</p>
-            <p className="text-sm">Add your first category to get started!</p>
-          </div>
-        )}
-      </div>
+          {categories.length === 0 && (
+            <div className="col-span-full text-center py-16 text-gray-500">
+              <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              <p className="text-lg font-medium">No categories yet</p>
+              <p className="text-sm">Add your first category to get started!</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

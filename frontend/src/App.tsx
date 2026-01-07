@@ -21,6 +21,7 @@ import AdminMaterials from './pages/admin/Materials';
 import AdminCategories from './pages/admin/Categories';
 import AdminOrders from './pages/admin/AdminOrdersPage';
 import AdminCustomOrders from './pages/admin/AdminCustomOrderPage';
+import OrderDetailsPage from './pages/admin/OrderDetailPage.tsx';
 //import ReadyMadePage from './pages/Readymadepage';
 import Login from './pages/LoginPage';
 import Layout from './components/Layout';
@@ -60,6 +61,8 @@ const App: React.FC = () => {
                 <Route path="/admin/materials" element={<AdminMaterials />} />
                 <Route path="/admin/categories" element={<AdminCategories />} />
                 <Route path="/admin/orders" element={<AdminOrders />} />
+          
+                <Route path="/admin/orders/:orderId" element={<OrderDetailsPage />} />
                 <Route path="/admin/custom-orders" element={<AdminCustomOrders />} />
               </Routes>
             </div>

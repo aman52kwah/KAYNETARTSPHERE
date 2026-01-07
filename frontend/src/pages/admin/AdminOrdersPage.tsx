@@ -2,12 +2,41 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { Edit, Eye, Loader } from 'lucide-react';
-import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:8080';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+
+interface OrderItem {
+  id: string;
+  productId: string;
+  quantity: number;
+  price: number;
+  Products?: {
+    name: string;
+    imageUrl?: string;
+  };
+}
+
+interface User {
+  name: string;
+  email: string;
+}
+
+interface BackendOrder {
+  id: string;
+  orderNumber: string;
+  userId: string;
+  totalAmount: number;
+  status: string;
+  createdAt: string;
+  shippingAddress?: string;
+  user?: User;
+  OrderItems?: OrderItem[];
+}
+
 interface Order {
   id: string;
+  orderNumber: string;
   customer: string;
   customerEmail: string;
   items: number;
@@ -30,7 +59,6 @@ const AdminOrders = () => {
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
-  
 
   const statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'paid'];
 
@@ -44,22 +72,63 @@ const AdminOrders = () => {
     fetchOrders();
   }, [user, navigate]);
 
+  const transformOrder = (backendOrder: BackendOrder): Order => {
+    return {
+      id: backendOrder.id,
+      orderNumber: backendOrder.orderNumber,
+      customer: backendOrder.user?.name || 'Unknown Customer',
+      customerEmail: backendOrder.user?.email || 'N/A',
+      items: backendOrder.OrderItems?.length || 0,
+      total: parseFloat(String(backendOrder.totalAmount)) || 0,
+      status: backendOrder.status,
+      date: backendOrder.createdAt,
+      type: 'Ready-Made',
+      orderItems: backendOrder.OrderItems?.map(item => ({
+        productName: item.Products?.name || 'Unknown Product',
+        quantity: item.quantity,
+        price: parseFloat(String(item.price)),
+        imageUrl: item.Products?.imageUrl,
+      })),
+    };
+  };
+
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BACKEND_URL}/api/admin/orders`, {
-        withCredentials: true
+      console.log('Fetching orders from:', `${BACKEND_URL}/api/admin/orders`);
+
+      const response = await fetch(`${BACKEND_URL}/api/admin/orders`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
-      setOrders(response.data);
+
+      console.log('Orders response status:', response.status);
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          setError('Admin access required');
+          navigate('/');
+          return;
+        }
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || 'Failed to load orders');
+      }
+
+      const data: BackendOrder[] = await response.json();
+      console.log('Raw orders data:', data);
+
+      // Transform backend orders to frontend format
+      const transformedOrders = data.map(transformOrder);
+      console.log('Transformed orders:', transformedOrders);
+
+      setOrders(transformedOrders);
       setError('');
     } catch (err: any) {
       console.error('Error fetching orders:', err);
-      if (err.response?.status === 403) {
-        setError('Admin access required');
-        navigate('/');
-      } else {
-        setError(err.response?.data?.message || 'Failed to load orders');
-      }
+      setError(err.message || 'Failed to load orders');
     } finally {
       setLoading(false);
     }
@@ -68,19 +137,34 @@ const AdminOrders = () => {
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
       setUpdatingOrderId(orderId);
-      await axios.patch(
+      console.log('Updating order status:', orderId, newStatus);
+
+      const response = await fetch(
         `${BACKEND_URL}/api/admin/orders/${orderId}/status`,
-        { status: newStatus },
-        { withCredentials: true }
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
       );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || 'Failed to update order status');
+      }
 
       // Update local state
       setOrders(orders.map(order =>
         order.id === orderId ? { ...order, status: newStatus } : order
       ));
+
+      console.log('Order status updated successfully');
     } catch (err: any) {
       console.error('Error updating order status:', err);
-      alert(err.response?.data?.message || 'Failed to update order status');
+      alert(err.message || 'Failed to update order status');
     } finally {
       setUpdatingOrderId(null);
     }
@@ -127,7 +211,7 @@ const AdminOrders = () => {
         <div className="max-w-7xl mx-auto px-4 py-12 flex justify-center items-center min-h-[400px]">
           <div className="text-center">
             <Loader className="animate-spin h-12 w-12 text-purple-600 mx-auto mb-4" />
-            <p className="text-gray-600"></p>
+            <p className="text-gray-600">Loading orders...</p>
           </div>
         </div>
       </Layout>
@@ -138,7 +222,7 @@ const AdminOrders = () => {
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="flex justify-between items-center mb-12">
-          <h1 className="text-5xl font-bold serif">Manage Orders</h1>
+          <h1 className="text-5xl font-bold serif text-gray-700">Manage Orders</h1>
           <div className="text-right">
             <p className="text-sm text-gray-600">Total Orders</p>
             <p className="text-3xl font-bold text-purple-600">{orders.length}</p>
@@ -161,26 +245,26 @@ const AdminOrders = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b-2 border-purple-100">
-                    <th className="text-left py-4 px-4 font-semibold">Order ID</th>
-                    <th className="text-left py-4 px-4 font-semibold">Customer</th>
-                    <th className="text-left py-4 px-4 font-semibold">Email</th>
-                    <th className="text-left py-4 px-4 font-semibold">Items</th>
-                    <th className="text-left py-4 px-4 font-semibold">Total</th>
-                    <th className="text-left py-4 px-4 font-semibold">Status</th>
-                    <th className="text-left py-4 px-4 font-semibold">Date</th>
-                    <th className="text-left py-4 px-4 font-semibold">Actions</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Order Number</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Customer</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Email</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Items</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Total</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Date</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {orders.map((order) => (
                     <tr key={order.id} className="border-b border-gray-100 hover:bg-purple-50 transition-colors">
-                      <td className="py-4 px-4 font-mono text-sm">
-                        {order.id.substring(0, 8)}...
+                      <td className="py-4 px-4 font-mono text-sm text-gray-700">
+                        {order.orderNumber}
                       </td>
-                      <td className="py-4 px-4 font-semibold">{order.customer}</td>
+                      <td className="py-4 px-4 font-semibold text-gray-700">{order.customer}</td>
                       <td className="py-4 px-4 text-sm text-gray-600">{order.customerEmail}</td>
-                      <td className="py-4 px-4">{order.items} items</td>
-                      <td className="py-4 px-4 font-semibold">GH₵ {order.total.toFixed(2)}</td>
+                      <td className="py-4 px-4 text-gray-700">{order.items} items</td>
+                      <td className="py-4 px-4 font-semibold text-gray-700">GH₵ {order.total.toFixed(2)}</td>
                       <td className="py-4 px-4">
                         <select
                           value={order.status}
@@ -191,7 +275,7 @@ const AdminOrders = () => {
                           }`}
                         >
                           {statuses.map(status => (
-                            <option key={status} value={status} className="capitalize">
+                            <option key={status} value={status} className="capitalize bg-white text-gray-900">
                               {status}
                             </option>
                           ))}
@@ -212,6 +296,7 @@ const AdminOrders = () => {
                           <button
                             className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                             title="Edit Order"
+                            disabled
                           >
                             <Edit size={18} />
                           </button>

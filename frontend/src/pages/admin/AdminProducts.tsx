@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../../components/Layout';
-import { Plus, Edit, Trash2, Save, X, Loader, Upload } from 'lucide-react';
-import axios from 'axios';
+import { Plus, Edit, Trash2, Save, X, Loader } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
@@ -10,13 +9,16 @@ const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
 interface Product {
   id: string;
   name: string;
-  price: number;
-  category: string;
+  price: number | string; // Backend might return string
   categoryId: string;
   stock: number;
-  sizes: string[];
+  sizes: string[] | null; // Can be null from backend
   description?: string;
   imageUrl?: string;
+  Category?: {
+    id: string;
+    name: string;
+  };
 }
 
 interface Category {
@@ -60,19 +62,61 @@ const AdminProducts = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/api/admin/products`, {
-        withCredentials: true
+      console.log('Fetching products from:', `${API_URL}/api/products`);
+
+      const response = await fetch(`${API_URL}/api/products`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
-      setProducts(response.data);
+
+      console.log('Products response status:', response.status);
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          setError('Admin access required');
+          navigate('/');
+          return;
+        }
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || 'Failed to load products');
+      }
+
+      const data = await response.json();
+      console.log('Products data:', data);
+      
+      // Transform products to ensure sizes is always an array
+      const transformedProducts = data.map((product: any) => {
+        let sizes = product.sizes;
+        
+        // Handle if sizes is a JSON string
+        if (typeof sizes === 'string') {
+          try {
+            sizes = JSON.parse(sizes);
+          } catch (e) {
+            sizes = [];
+          }
+        }
+        
+        // Ensure sizes is an array
+        if (!Array.isArray(sizes)) {
+          sizes = [];
+        }
+        
+        return {
+          ...product,
+          sizes
+        };
+      });
+      
+      console.log('Transformed products:', transformedProducts);
+      setProducts(transformedProducts);
       setError('');
     } catch (err: any) {
       console.error('Error fetching products:', err);
-      if (err.response?.status === 403) {
-        setError('Admin access required');
-        navigate('/');
-      } else {
-        setError(err.response?.data?.message || 'Failed to load products');
-      }
+      setError(err.message || 'Failed to load products');
     } finally {
       setLoading(false);
     }
@@ -80,10 +124,23 @@ const AdminProducts = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/admin/categories`, {
-        withCredentials: true
+      console.log('Fetching categories from:', `${API_URL}/api/categories`);
+
+      const response = await fetch(`${API_URL}/api/categories`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
-      setCategories(response.data);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories');
+      }
+
+      const data = await response.json();
+      console.log('Categories data:', data);
+      setCategories(data);
     } catch (err: any) {
       console.error('Error fetching categories:', err);
     }
@@ -94,9 +151,9 @@ const AdminProducts = () => {
       setEditingProduct(product);
       setFormData({
         name: product.name,
-        price: product.price.toString(),
+        price: String(product.price), // Ensure it's a string for the input
         categoryId: product.categoryId,
-        stock: product.stock.toString(),
+        stock: String(product.stock), // Ensure it's a string for the input
         sizes: product.sizes || [],
         description: product.description || '',
         imageUrl: product.imageUrl || '',
@@ -168,32 +225,42 @@ const AdminProducts = () => {
         imageUrl: formData.imageUrl || null
       };
 
+      console.log('Submitting product data:', productData);
+
+      const url = editingProduct
+        ? `${API_URL}/api/products/${editingProduct.id}`
+        : `${API_URL}/api/products`;
+
+      const response = await fetch(url, {
+        method: editingProduct ? 'PUT' : 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || 'Failed to save product');
+      }
+
+      const savedProduct = await response.json();
+      console.log('Product saved:', savedProduct);
+
       if (editingProduct) {
-        // Update existing product
-        const response = await axios.put(
-          `${API_URL}/api/admin/products/${editingProduct.id}`,
-          productData,
-          { withCredentials: true }
-        );
-        
         setProducts(prev =>
-          prev.map(p => p.id === editingProduct.id ? response.data : p)
+          prev.map(p => p.id === editingProduct.id ? savedProduct : p)
         );
       } else {
-        // Create new product
-        const response = await axios.post(
-          `${API_URL}/api/admin/products`,
-          productData,
-          { withCredentials: true }
-        );
-        
-        setProducts(prev => [response.data, ...prev]);
+        setProducts(prev => [savedProduct, ...prev]);
       }
 
       handleCloseModal();
+      alert(`Product ${editingProduct ? 'updated' : 'created'} successfully!`);
     } catch (err: any) {
       console.error('Error saving product:', err);
-      alert(err.response?.data?.message || 'Failed to save product');
+      alert(err.message || 'Failed to save product');
     } finally {
       setSubmitting(false);
     }
@@ -205,14 +272,26 @@ const AdminProducts = () => {
     }
 
     try {
-      await axios.delete(`${API_URL}/api/admin/products/${id}`, {
-        withCredentials: true
+      console.log('Deleting product:', id);
+
+      const response = await fetch(`${API_URL}/api/products/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
-      
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || 'Failed to delete product');
+      }
+
       setProducts(prev => prev.filter(p => p.id !== id));
+      alert('Product deleted successfully!');
     } catch (err: any) {
       console.error('Error deleting product:', err);
-      alert(err.response?.data?.message || 'Failed to delete product');
+      alert(err.message || 'Failed to delete product');
     }
   };
 
@@ -246,7 +325,7 @@ const AdminProducts = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-12">
           <div>
-            <h1 className="text-5xl font-bold serif mb-2">Manage Products</h1>
+            <h1 className="text-5xl font-bold serif mb-2 text-gray-700">Manage Products</h1>
             <p className="text-xl text-gray-600">Add, edit, or remove ready-made products</p>
             <p className="text-sm text-gray-500 mt-2">Total Products: {products.length}</p>
           </div>
@@ -283,12 +362,12 @@ const AdminProducts = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b-2 border-purple-100">
-                    <th className="text-left py-4 px-4 font-semibold">Product Name</th>
-                    <th className="text-left py-4 px-4 font-semibold">Category</th>
-                    <th className="text-left py-4 px-4 font-semibold">Price</th>
-                    <th className="text-left py-4 px-4 font-semibold">Stock</th>
-                    <th className="text-left py-4 px-4 font-semibold">Sizes</th>
-                    <th className="text-left py-4 px-4 font-semibold">Actions</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Product Name</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Category</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Price</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Stock</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Sizes</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -306,15 +385,15 @@ const AdminProducts = () => {
                               className="w-12 h-12 object-cover rounded-lg"
                             />
                           )}
-                          <span className="font-semibold">{product.name}</span>
+                          <span className="font-semibold text-gray-700">{product.name}</span>
                         </div>
                       </td>
                       <td className="py-4 px-4">
                         <span className="px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-xs font-semibold capitalize">
-                          {product.category}
+                          {product.Category?.name || 'N/A'}
                         </span>
                       </td>
-                      <td className="py-4 px-4 font-semibold">GH₵ {product.price.toFixed(2)}</td>
+                      <td className="py-4 px-4 font-semibold text-gray-700">GH₵ {parseFloat(String(product.price)).toFixed(2)}</td>
                       <td className="py-4 px-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                           product.stock > 10 ? 'bg-green-100 text-green-600' :
@@ -325,7 +404,7 @@ const AdminProducts = () => {
                           {product.stock === 0 ? 'Out of Stock' : `${product.stock} in stock`}
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-sm">{product.sizes.join(', ')}</td>
+                      <td className="py-4 px-4 text-sm text-gray-600">{(product.sizes || []).join(', ') || 'N/A'}</td>
                       <td className="py-4 px-4">
                         <div className="flex gap-2">
                           <button
@@ -357,7 +436,7 @@ const AdminProducts = () => {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-bold serif">
+                <h2 className="text-3xl font-bold serif text-gray-700">
                   {editingProduct ? 'Edit Product' : 'Add New Product'}
                 </h2>
                 <button
@@ -371,7 +450,7 @@ const AdminProducts = () => {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Product Name *</label>
+                  <label className="block text-sm font-semibold mb-2 text-gray-700">Product Name *</label>
                   <input
                     type="text"
                     name="name"
@@ -385,7 +464,7 @@ const AdminProducts = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold mb-2">Price (GH₵) *</label>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700">Price (GH₵) *</label>
                     <input
                       type="number"
                       name="price"
@@ -400,7 +479,7 @@ const AdminProducts = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold mb-2">Stock Quantity *</label>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700">Stock Quantity *</label>
                     <input
                       type="number"
                       name="stock"
@@ -415,7 +494,7 @@ const AdminProducts = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Category *</label>
+                  <label className="block text-sm font-semibold mb-2 text-gray-700">Category *</label>
                   <select
                     name="categoryId"
                     value={formData.categoryId}
@@ -434,7 +513,7 @@ const AdminProducts = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-3">Available Sizes *</label>
+                  <label className="block text-sm font-semibold mb-3 text-gray-700">Available Sizes *</label>
                   <div className="flex flex-wrap gap-3">
                     {availableSizes.map(size => (
                       <button
@@ -458,7 +537,7 @@ const AdminProducts = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Image URL</label>
+                  <label className="block text-sm font-semibold mb-2 text-gray-700">Image URL</label>
                   <input
                     type="url"
                     name="imageUrl"
@@ -471,7 +550,7 @@ const AdminProducts = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Description</label>
+                  <label className="block text-sm font-semibold mb-2 text-gray-700">Description</label>
                   <textarea
                     name="description"
                     value={formData.description}

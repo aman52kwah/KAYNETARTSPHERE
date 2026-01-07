@@ -1,5 +1,8 @@
 // Types for Admin Dashboard
 
+// Types for Admin Dashboard
+import type { LucideIcon } from 'lucide-react';
+
 export interface DashboardStats {
   totalOrders: number;
   customOrders: number;
@@ -21,7 +24,7 @@ export interface RecentOrder {
 export interface StatCard {
   title: string;
   value: string | number;
-  icon: any;
+  icon: LucideIcon;
   color: 'purple' | 'pink' | 'orange' | 'green';
   change: string;
 }

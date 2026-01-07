@@ -1,13 +1,16 @@
 // API service for Admin Dashboard
 
-import type { DashboardStats,RecentOrder}  from "../types/admin";
+import type { DashboardStats, RecentOrder } from "../types/admin";
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api';
+// FIXED: Remove /api from here since we add it in each endpoint
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
 
 export const adminApi = {
   // Fetch dashboard statistics
   getDashboardStats: async (): Promise<DashboardStats> => {
-    const response = await fetch(`${API_BASE_URL}/admin/stats`, {
+    console.log('Fetching dashboard stats from:', `${API_BASE_URL}/api/admin/dashboard/stats`);
+    
+    const response = await fetch(`${API_BASE_URL}/api/admin/dashboard/stats`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -15,16 +18,21 @@ export const adminApi = {
       },
     });
 
+    console.log('Dashboard stats response status:', response.status);
+
     if (!response.ok) {
-      throw new Error('Failed to fetch dashboard stats');
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(errorData.message || 'Failed to fetch dashboard stats');
     }
 
     return response.json();
   },
 
   // Fetch recent orders
-  getRecentOrders: async (limit: number = 10): Promise<RecentOrder[]> => {
-    const response = await fetch(`${API_BASE_URL}/admin/orders/recent?limit=${limit}`, {
+  getRecentOrders: async (limit: number = 5): Promise<RecentOrder[]> => {
+    console.log('Fetching recent orders from:', `${API_BASE_URL}/api/admin/orders/recent?limit=${limit}`);
+    
+    const response = await fetch(`${API_BASE_URL}/api/admin/orders/recent?limit=${limit}`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -32,8 +40,11 @@ export const adminApi = {
       },
     });
 
+    console.log('Recent orders response status:', response.status);
+
     if (!response.ok) {
-      throw new Error('Failed to fetch recent orders');
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(errorData.message || 'Failed to fetch recent orders');
     }
 
     return response.json();
@@ -41,7 +52,7 @@ export const adminApi = {
 
   // Get all orders
   getAllOrders: async () => {
-    const response = await fetch(`${API_BASE_URL}/admin/orders`, {
+    const response = await fetch(`${API_BASE_URL}/api/admin/orders`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -50,7 +61,8 @@ export const adminApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch orders');
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(errorData.message || 'Failed to fetch orders');
     }
 
     return response.json();
@@ -58,7 +70,7 @@ export const adminApi = {
 
   // Get all custom orders
   getAllCustomOrders: async () => {
-    const response = await fetch(`${API_BASE_URL}/admin/custom-orders`, {
+    const response = await fetch(`${API_BASE_URL}/api/admin/custom-orders`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -67,7 +79,8 @@ export const adminApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch custom orders');
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(errorData.message || 'Failed to fetch custom orders');
     }
 
     return response.json();
@@ -75,7 +88,7 @@ export const adminApi = {
 
   // Update order status
   updateOrderStatus: async (orderId: string, status: string) => {
-    const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}/status`, {
+    const response = await fetch(`${API_BASE_URL}/api/admin/orders/${orderId}/status`, {
       method: 'PATCH',
       credentials: 'include',
       headers: {
@@ -85,7 +98,8 @@ export const adminApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to update order status');
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(errorData.message || 'Failed to update order status');
     }
 
     return response.json();

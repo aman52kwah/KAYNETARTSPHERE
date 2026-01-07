@@ -21,7 +21,9 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<LoginResult>;
   register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
+  isAuthenticated:boolean;
+  isAdmin:boolean;
   checkAuth: () => Promise<void>;
 }
 
@@ -78,8 +80,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const isAuthenticated =!!user;
+  const isAdmin = user?.role =='admin';
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, checkAuth,isAdmin,isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

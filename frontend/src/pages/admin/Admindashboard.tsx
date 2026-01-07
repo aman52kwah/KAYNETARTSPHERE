@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { Package, ShoppingBag, Users, TrendingUp, DollarSign, Clock, AlertCircle } from 'lucide-react';
 import { adminApi } from '../../services/adminapi';
-import type { DashboardStats,RecentOrder,StatCard } from '../../types/admin';
+import type { DashboardStats, RecentOrder, StatCard } from '../../types/admin';
 
 const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
@@ -42,6 +42,26 @@ const AdminDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Define color mappings to avoid dynamic Tailwind classes
+  const colorClasses = {
+    purple: {
+      bg: 'bg-purple-100',
+      text: 'text-purple-600',
+    },
+    pink: {
+      bg: 'bg-pink-100',
+      text: 'text-pink-600',
+    },
+    orange: {
+      bg: 'bg-orange-100',
+      text: 'text-orange-600',
+    },
+    green: {
+      bg: 'bg-green-100',
+      text: 'text-green-600',
+    },
   };
 
   const statCards: StatCard[] = [
@@ -138,15 +158,16 @@ const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {statCards.map((stat, idx) => {
             const IconComponent = stat.icon;
+            const colors = colorClasses[stat.color];
+            
             return (
               <div
                 key={idx}
                 className="glass-effect rounded-2xl p-6 hover:scale-105 transition-transform"
-                style={{ animationDelay: `${idx * 0.1}s` }}
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`bg-${stat.color}-100 p-3 rounded-xl`}>
-                    <IconComponent className={`text-${stat.color}-600`} size={24} />
+                  <div className={`${colors.bg} p-3 rounded-xl`}>
+                    <IconComponent className={colors.text} size={24} />
                   </div>
                   <span className={`text-sm font-semibold ${
                     stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'
@@ -205,7 +226,7 @@ const AdminDashboard: React.FC = () => {
 
         {/* Recent Orders */}
         <div className="glass-effect rounded-2xl p-8">
-          <h2 className="text-2xl font-bold serif mb-6 text-green-500">Recent Orders</h2>
+          <h2 className="text-2xl font-bold serif mb-6 text-gray-700">Recent Orders</h2>
           
           {recentOrders.length === 0 ? (
             <div className="text-center py-12">
@@ -218,13 +239,13 @@ const AdminDashboard: React.FC = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b-2 border-purple-100">
-                      <th className="text-left py-4 px-4 font-semibold text-blue-600">Order ID</th>
-                      <th className="text-left py-4 px-4 font-semibold text-green-600">Customer</th>
-                      <th className="text-left py-4 px-4 font-semibold text-yellow-600">Type</th>
-                      <th className="text-left py-4 px-4 font-semibold text-gray-600">Amount</th>
-                      <th className="text-left py-4 px-4 font-semibold text-green-600">Status</th>
-                      <th className="text-left py-4 px-4 font-semibold text-blue-600">Date</th>
-                      <th className="text-left py-4 px-4 font-semibold text-red-600">Actions</th>
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Order ID</th>
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Customer</th>
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Type</th>
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Amount</th>
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Date</th>
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -234,7 +255,7 @@ const AdminDashboard: React.FC = () => {
                         className="border-b border-gray-100 hover:bg-purple-50 transition-colors"
                       >
                         <td className="py-4 px-4 font-mono text-sm text-gray-600">{order.id}</td>
-                        <td className="py-4 px-4 text-green-600">{order.customer}</td>
+                        <td className="py-4 px-4 text-gray-700">{order.customer}</td>
                         <td className="py-4 px-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                             order.type === 'Custom' 
