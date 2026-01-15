@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import { ShoppingBag, Package, AlertCircle } from 'lucide-react';
 
 // IMPORTANT: Use the correct API base URL
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 interface OrderItem {
   id: string;
@@ -28,20 +28,20 @@ interface Order {
 
 interface CustomOrder {
   id: string;
-  size: string;
-  totalPrice: number;
-  paidAmount: number;
+  fullName: string;
+  garmentLabel?: string;
+  garmentType?: string;
+  fabricLabel?: string;
+  fabricType?: string;
+  totalAmount: number;
+  depositAmount: number;
+  balanceAmount: number;
   status: string;
+  paymentStatus: string;
   createdAt: string;
-  specialInstructions: string;
-  measurements: Record<string, string>;
-  Style: {
-    name: string;
-    imageUrl: string;
-  };
-  Material: {
-    name: string;
-  };
+  specialRequests?: string;
+  measurements?: string | Record<string, string>;
+  urgencyLabel?: string;
 }
 
 const OrderHistory: React.FC = () => {
@@ -114,6 +114,17 @@ const OrderHistory: React.FC = () => {
     }
   };
 
+  const parseMeasurements = (measurementData: unknown): Record<string, string> => {
+    try {
+      if (typeof measurementData === 'string') {
+        return JSON.parse(measurementData);
+      }
+      return (measurementData as Record<string, string>) || {};
+    } catch (err) {
+      return {};
+    }
+  };
+
   const getStatusColor = (status: string): string => {
     const colors: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -136,7 +147,7 @@ const OrderHistory: React.FC = () => {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading your orders...</p>
+              <p className="text-gray-600">Loading orders...</p>
             </div>
           </div>
         </div>
@@ -282,21 +293,24 @@ const OrderHistory: React.FC = () => {
                 <p className="text-gray-500">Create a custom order to see it here!</p>
               </div>
             ) : (
-              customOrders.map((order) => (
-                <div key={order.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center space-x-4">
-                      <img
-                        src={order.Style?.imageUrl || 'https://via.placeholder.com/100'}
-                        alt={order.Style?.name}
-                        className="w-24 h-24 object-cover rounded"
-                      />
+              customOrders.map((order) => {
+                const measurements = parseMeasurements(order.measurements);
+                
+                return (
+                  <div key={order.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="font-bold text-lg text-gray-800">{order.Style?.name}</h3>
+                        <h3 className="font-bold text-lg text-gray-800">
+                          {order.garmentLabel || order.garmentType}
+                        </h3>
                         <p className="text-sm text-gray-600">
-                          Material: {order.Material?.name}
+                          Fabric: {order.fabricLabel || order.fabricType}
                         </p>
-                        <p className="text-sm text-gray-600">Size: {order.size}</p>
+                        {order.urgencyLabel && (
+                          <p className="text-sm text-gray-600">
+                            Timeline: {order.urgencyLabel}
+                          </p>
+                        )}
                         <p className="text-sm text-gray-600">
                           {new Date(order.createdAt).toLocaleDateString('en-US', {
                             year: 'numeric',
@@ -305,39 +319,66 @@ const OrderHistory: React.FC = () => {
                           })}
                         </p>
                       </div>
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
+                          order.status
+                        )}`}
+                      >
+                        {order.status.toUpperCase().replace('_', ' ')}
+                      </span>
                     </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
-                        order.status
-                      )}`}
-                    >
-                      {order.status.toUpperCase().replace('_', ' ')}
-                    </span>
-                  </div>
 
-                  {order.specialInstructions && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded">
-                      <p className="text-sm font-semibold text-gray-700">Special Instructions:</p>
-                      <p className="text-sm text-gray-600">{order.specialInstructions}</p>
-                    </div>
-                  )}
+                    {/* Measurements */}
+                    {Object.keys(measurements).length > 0 && (
+                      <div className="mb-4 p-3 bg-gray-50 rounded">
+                        <p className="text-sm font-semibold text-gray-700 mb-2">Measurements:</p>
+                        <div className="grid grid-cols-3 gap-2 text-sm text-gray-600">
+                          {Object.entries(measurements).map(([key, value]) => (
+                            <div key={key}>
+                              <span className="capitalize">{key}:</span> {value}"
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                  <div className="border-t pt-4 grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Total Price</p>
-                      <p className="text-lg font-bold text-gray-800">
-                        GH₵{parseFloat(String(order.totalPrice)).toLocaleString()}
-                      </p>
+                    {order.specialRequests && (
+                      <div className="mb-4 p-3 bg-blue-50 rounded">
+                        <p className="text-sm font-semibold text-gray-700">Special Requests:</p>
+                        <p className="text-sm text-gray-600">{order.specialRequests}</p>
+                      </div>
+                    )}
+
+                    <div className="border-t pt-4 grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Total Price</p>
+                        <p className="text-lg font-bold text-gray-800">
+                          GH₵{parseFloat(String(order.totalAmount)).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Deposit Paid (50%)</p>
+                        <p className="text-lg font-bold text-green-600">
+                          GH₵{parseFloat(String(order.depositAmount)).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Balance Due</p>
+                        <p className="text-lg font-bold text-orange-600">
+                          GH₵{parseFloat(String(order.balanceAmount)).toLocaleString()}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Amount Paid (50% Deposit)</p>
-                      <p className="text-lg font-bold text-green-600">
-                        GH₵{parseFloat(String(order.paidAmount)).toLocaleString()}
-                      </p>
+
+                    {/* Payment Status */}
+                    <div className="mt-4 pt-4 border-t">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.paymentStatus)}`}>
+                        Payment: {order.paymentStatus?.replace('_', ' ').toUpperCase()}
+                      </span>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

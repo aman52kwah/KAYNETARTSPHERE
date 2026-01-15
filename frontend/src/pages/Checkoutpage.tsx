@@ -106,21 +106,22 @@ const CheckoutPage: React.FC = () => {
           depositAmount: customOrderData.deposit
         };
       } else {
-        // Regular cart order data
+        // Regular cart order data - include calculated total with tax and shipping
         orderData = {
           orderType: 'regular',
           items: cart.map(item => ({
             productId: item.id,
             quantity: item.quantity
           })),
-          shippingAddress: `${shippingInfo.fullName}, ${shippingInfo.phone}, ${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.region}`
+          shippingAddress: `${shippingInfo.fullName}, ${shippingInfo.phone}, ${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.region}`,
+          totalAmount: finalAmount  // Total with tax and shipping
         };
       }
 
       console.log('Order data:', orderData);
 
       // Choose appropriate endpoint based on order type
-      const endpoint = isCustomOrder ? '/api/orders/custom' : '/api/orders';
+      const endpoint = isCustomOrder ? '/api/custom-orders' : '/api/orders';
 
       const orderResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
@@ -182,8 +183,22 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
-  // Calculate amount based on order type
-  const amount = isCustomOrder ? customOrderData.deposit : cartTotal;
+  // Calculate financial breakdown with tax and shipping
+  const calculateFinancialBreakdown = () => {
+    const itemsTotal = isCustomOrder ? customOrderData.deposit : cartTotal;
+    const shippingCost = 20; // Fixed GH₵ 20
+    const taxAmount = Math.round((itemsTotal * 0.10) * 100) / 100; // 10% tax
+    const grandTotal = Math.round((itemsTotal + shippingCost + taxAmount) * 100) / 100;
+    
+    return {
+      subtotal: itemsTotal,
+      shipping: shippingCost,
+      tax: taxAmount,
+      total: grandTotal
+    };
+  };
+
+  const { subtotal, shipping, tax, total: finalAmount } = calculateFinancialBreakdown();
 
   // Get items to display
   const displayItems = isCustomOrder ? customOrderData.items : cart;
@@ -369,8 +384,8 @@ const CheckoutPage: React.FC = () => {
                   ? "Processing..."
                   : isFormValid()
                   ? isCustomOrder
-                    ? `Pay 50% Deposit - GH₵ ${amount.toLocaleString()}`
-                    : `Pay GH₵ ${amount.toLocaleString()} Now`
+                    ? `Pay 50% Deposit - GH₵ ${finalAmount.toLocaleString()}`
+                    : `Pay GH₵ ${finalAmount.toLocaleString()} Now`
                   : "Complete Shipping Information"}
               </button>
             </div>
@@ -424,13 +439,35 @@ const CheckoutPage: React.FC = () => {
                 </div>
               )}
 
+              {/* Financial Breakdown */}
+              <div className="pb-4 border-b border-gray-200 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-semibold text-gray-800">
+                    GH₵ {subtotal.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Shipping:</span>
+                  <span className="font-semibold text-gray-800">
+                    GH₵ {shipping.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Tax (10%):</span>
+                  <span className="font-semibold text-gray-800">
+                    GH₵ {tax.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
               <div className="pt-4 border-t-2 border-green-400">
                 <div className="flex justify-between text-lg font-bold">
                   <span className="text-gray-800">
                     {isCustomOrder ? 'Amount to Pay Now:' : 'Total Amount:'}
                   </span>
                   <span className="text-green-600">
-                    GH₵ {amount.toLocaleString()}
+                    GH₵ {finalAmount.toLocaleString()}
                   </span>
                 </div>
               </div>

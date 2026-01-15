@@ -117,7 +117,7 @@ const AdminDashboard: React.FC = () => {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading dashboard...</p>
+              <p className="text-gray-600"></p>
             </div>
           </div>
         </div>
@@ -280,7 +280,7 @@ const AdminDashboard: React.FC = () => {
                         </td>
                         <td className="py-4 px-4">
                           <Link
-                            to={`/admin/orders/${order.id}`}
+                            to={`api/admin/orders/${order.id}`}
                             className="text-purple-600 hover:text-purple-800 font-semibold text-sm"
                           >
                             View

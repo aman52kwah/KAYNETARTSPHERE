@@ -344,19 +344,19 @@ const OrderDetailsPage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between text-gray-700">
                   <span>Subtotal</span>
-                  <span>${order.subtotal.toFixed(2)}</span>
+                  <span>GH¢ {order.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-gray-700">
                   <span>Shipping</span>
-                  <span>${order.shipping.toFixed(2)}</span>
+                  <span>GH¢ {order.shipping.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-gray-700">
                   <span>Tax</span>
-                  <span>${order.tax.toFixed(2)}</span>
+                  <span>GH¢ {order.tax.toFixed(2)}</span>
                 </div>
                 <div className="border-t pt-3 flex justify-between text-lg font-bold text-gray-900">
                   <span>Total</span>
-                  <span>${order.total.toFixed(2)}</span>
+                  <span>GH¢ {order.total.toFixed(2)}</span>
                 </div>
               </div>
             </div>

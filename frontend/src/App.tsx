@@ -26,6 +26,7 @@ import OrderDetailsPage from './pages/admin/OrderDetailPage.tsx';
 import Login from './pages/LoginPage';
 import Layout from './components/Layout';
 import RegisterPage from './pages/RegisterPage';
+import AdminCustomOrderDetail from './pages/admin/AdminCustomorderDetailPage.tsx';
 
 // Configure axios defaults
 axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
@@ -64,6 +65,8 @@ const App: React.FC = () => {
           
                 <Route path="/admin/orders/:orderId" element={<OrderDetailsPage />} />
                 <Route path="/admin/custom-orders" element={<AdminCustomOrders />} />
+                <Route path="/admin/custom-orders/:orderId" element={<AdminCustomOrderDetail />} />
+                <Route path="/admin/orders/:orderId" element={<OrderDetailsPage />} />
               </Routes>
             </div>
           </Layout>
